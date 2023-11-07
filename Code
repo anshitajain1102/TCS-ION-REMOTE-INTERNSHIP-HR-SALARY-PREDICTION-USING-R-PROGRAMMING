@@ -1,0 +1,134 @@
+setwd("C:/Users/ASUS/Documents/New folder/R Code") # This is used to set the working directory
+getwd() # used for getting the working directory used 
+# Load the necessary R packages
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(caret)
+library(lmtest)
+library(corrplot)
+library(car)
+library(shiny)
+library(shinyWidgets)
+library(shinyjs)
+library(writexl)  # Add the writexl package
+
+# Load the dataset from Excel
+data <- read_excel(file.choose())
+
+# Preprocess the data
+# Check for missing values and handle them if necessary
+# Encoding categorical variables if needed
+
+# Split the data into training and testing sets
+set.seed(123)  # for reproducibility
+train_index <- createDataPartition(data$salary, p = 0.7, list = FALSE)
+train_data <- data[train_index, ]
+test_data <- data[-train_index, ]
+
+# Save training data to Excel
+write_xlsx(train_data, path = "train_data.xlsx")
+
+# Save testing data to Excel
+write_xlsx(test_data, path = "test_data.xlsx")
+
+# Build the OLS regression model
+model <- lm(salary ~ age + education + experience, data = train_data)
+
+# Install and load the Shiny package if not already installed
+install.packages("shiny")
+install.packages("shinyWidgets")
+install.packages("shinythemes")
+install.packages("shinydashboard")
+library(shiny)
+library(shinyWidgets)
+
+library(shinydashboard)
+library(shinyWidgets)
+library(shiny)
+library(shinydashboard)
+library(shinyWidgets)
+
+ui <- dashboardPage(
+  dashboardHeader(title = "HR Salary Prediction Dashboard"),
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Instructions", tabName = "instructions", icon = icon("book")),
+      menuItem("Salary Calculation", tabName = "salary_calculation", icon = icon("calculator"))
+    )
+  ),
+  dashboardBody(
+    tabItems(
+      tabItem(
+        tabName = "instructions",
+        fluidRow(
+          box(
+            width = 12,
+            status = "primary",
+            title = "Instructions",
+            background = "teal",
+            div(style = "color: #fff; font-size: 20px; font-weight: bold;", "Welcome to the HR Salary Prediction Dashboard!"),
+            div(style = "color: #fff;", "Please follow these instructions to calculate the salary:"),
+            div(style = "color: #fff;", "1. Select the age range using the slider."),
+            div(style = "color: #fff;", "2. Choose the highest education level from the dropdown."),
+            div(style = "color: #fff;", "3. Specify the experience range using the slider."),
+            div(style = "color: #fff;", "4. Click 'Calculate Salary' to see the predicted salary."),
+          )
+        )
+      ),
+      tabItem(
+        tabName = "salary_calculation",
+        fluidRow(
+          box(
+            width = 4,
+            status = "primary",
+            title = "Employee Information",
+            background = "teal",
+            div(style = "color: #fff; font-size: 20px; font-weight: bold;", "Age Range:"),
+            sliderTextInput("age", "", grid = TRUE, force_edges = TRUE, width = "100%",
+                            choices = seq(20, 60, by = 1)),
+            div(style = "color: #fff; font-size: 20px; font-weight: bold;", "Education:"),
+            selectInput("education", "", choices = unique(data$education)),
+            div(style = "color: #fff; font-size: 20px; font-weight: bold;", "Experience Range:"),
+            sliderTextInput("experience", "", grid = TRUE, force_edges = TRUE, width = "100%",
+                            choices = seq(1, 15, by = 1)),
+            actionButton("calculate_salary", "Calculate Salary", class = "btn btn-success btn-block")
+          ),
+          box(
+            width = 8,
+            status = "info",
+            title = "Salary Calculation",
+            background = "purple",
+            h3("Predicted Salary:", style = "color: #fff; font-size: 24px; text-align: center;"),
+            textOutput("predicted_salary")
+          )
+        )
+      )
+    )
+  )
+)
+
+server <- function(input, output) {
+  observeEvent(input$calculate_salary, {
+    age_range <- as.numeric(gsub(",", "", input$age))
+    experience_range <- as.numeric(gsub(",", "", input$experience))
+    
+    new_data <- data.frame(
+      age = mean(age_range),
+      education = input$education,
+      experience = mean(experience_range)
+    )
+    if (!is.na(new_data$age) && !is.na(new_data$experience)) {
+      predicted_salary <- predict(model, newdata = new_data)
+      output$predicted_salary <- renderText({
+        paste("Predicted Salary: Rs.", round(predicted_salary, 2))
+      })
+    } else {
+      output$predicted_salary <- renderText({
+        "Please enter valid age and experience."
+      })
+    }
+  })
+}
+
+shinyApp(ui = ui, server = server)
