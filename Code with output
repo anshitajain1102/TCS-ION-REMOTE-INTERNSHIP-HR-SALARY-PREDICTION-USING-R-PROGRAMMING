@@ -1,0 +1,262 @@
+ setwd("C:/Users/ASUS/Documents/New folder/R Code") # This is used to set the working directory
+> getwd() # used for getting the working directory used 
+[1] "C:/Users/ASUS/Documents/New folder/R Code"
+> # Load the necessary R packages
+> library(readxl)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+> library(ggplot2)
+> library(caret)
+Loading required package: lattice
+> library(lmtest)
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+> library(corrplot)
+corrplot 0.92 loaded
+> library(car)
+Loading required package: carData
+
+Attaching package: ‘car’
+
+The following object is masked from ‘package:dplyr’:
+
+    recode
+
+> library(shiny)
+> library(shinyWidgets)
+> library(shinyjs)
+Use suppressPackageStartupMessages() to eliminate package startup messages.
+
+Attaching package: ‘shinyjs’
+
+The following object is masked from ‘package:shinyWidgets’:
+
+    alert
+
+The following object is masked from ‘package:shiny’:
+
+    runExample
+
+The following object is masked from ‘package:lmtest’:
+
+    reset
+
+The following objects are masked from ‘package:methods’:
+
+    removeClass, show
+
+> library(writexl)  # Add the writexl package
+> # Load the dataset from Excel
+> data <- read_excel(file.choose())
+> # Remove outliers from the 'salary' variable
+> # Calculate the Z-score for the 'salary' variable
+> z_scores <- scale(data$salary)
+> # Define a threshold for outliers (e.g., 2 standard deviations)
+> threshold <- 2
+> threshold
+[1] 2
+> # Filter out rows with outliers
+> data <- data[abs(z_scores) < threshold, ]
+ # Filter out rows with outliers
+> data <- data[abs(z_scores) < threshold, ]
+> # Split the data into training and testing sets
+> set.seed(123)  # for reproducibility
+> train_index <- createDataPartition(data$salary, p = 0.7, list = FALSE)
+> train_data <- data[train_index, ]
+> test_data <- data[-train_index, ]
+> # Save training data to Excel
+> write_xlsx(train_data, path = "train_data.xlsx")
+> # Save testing data to Excel
+> write_xlsx(test_data, path = "test_data.xlsx")
+> # Build the OLS regression model
+> model <- lm(salary ~ age + education + experience, data = train_data)
+> summary(model)
+
+Call:
+lm(formula = salary ~ age + education + experience, data = train_data)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-17591.8  -7843.7    339.6   8685.9  19715.7 
+
+Coefficients:
+                Estimate Std. Error t value Pr(>|t|)    
+(Intercept)    20425.436    621.974  32.840   <2e-16 ***
+age               -9.456     14.644  -0.646    0.518    
+educationBCA     -79.896    439.930  -0.182    0.856    
+educationBCOM    -50.100    432.673  -0.116    0.908    
+educationBE     -208.220    433.704  -0.480    0.631    
+educationBSC    -379.656    439.242  -0.864    0.387    
+educationBTECH  -334.550    433.126  -0.772    0.440    
+educationMBA    -206.513    439.055  -0.470    0.638    
+educationMCA      11.752    431.426   0.027    0.978    
+educationMCOM   -118.473    433.311  -0.273    0.785    
+educationMSC     115.684    441.606   0.262    0.793    
+educationMTECH  -210.241    436.743  -0.481    0.630    
+educationPHD     654.706    440.238   1.487    0.137    
+experience      8916.007     30.596 291.407   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 10200 on 13470 degrees of freedom
+Multiple R-squared:  0.8633,	Adjusted R-squared:  0.8631 
+F-statistic:  6541 on 13 and 13470 DF,  p-value: < 2.2e-16
+
+>  mean(model$residuals) 
+[1] -2.194678e-13
+> bptest(model) 
+
+	studentized Breusch-Pagan test
+
+data:  model
+BP = 936.18, df = 13, p-value < 2.2e-16
+
+> durbinWatsonTest(model)
+ lag Autocorrelation D-W Statistic p-value
+   1    -0.003603012      2.007152   0.672
+ Alternative hypothesis: rho != 0
+> shapiro.test(model$residuals)
+vif(model)
+               GVIF Df GVIF^(1/(2*Df))
+age        1.000780  1        1.000390
+education  1.001866 11        1.000085
+experience 1.001186  1        1.000593
+
+ vif(model)
+               GVIF Df GVIF^(1/(2*Df))
+age        1.000780  1        1.000390
+education  1.001866 11        1.000085
+experience 1.001186  1        1.000593
+> library(shiny)
+> library(shinyWidgets)
+> library(shinydashboard)
+
+Attaching package: ‘shinydashboard’
+
+The following object is masked from ‘package:graphics’:
+
+    box
+
+> ui <- dashboardPage(
++   dashboardHeader(title = "HR Salary Prediction Dashboard"),
++   dashboardSidebar(
++     sidebarMenu(
++       menuItem("Instructions", tabName = "instructions", icon = icon("book")),
++       menuItem("Salary Calculation", tabName = "salary_calculation", icon = icon("calculator"))
++     )
++   ),
++   dashboardBody(
++     tabItems(
++       tabItem(
++         tabName = "instructions",
++         fluidRow(
++           box(
++             width = 12,
++             status = "primary",
++             title = "Instructions",
++             background = "teal",
++             div(style = "color: #fff; font-size: 20px; font-weight: bold;", "Welcome to the HR Salary Prediction Dashboard!"),
++             div(style = "color: #fff;", "Please follow these instructions to calculate the salary:"),
++             div(style = "color: #fff;", "1. Select the age range using the slider."),
++             div(style = "color: #fff;", "2. Choose the highest education level from the dropdown."),
++             div(style = "color: #fff;", "3. Specify the experience range using the slider."),
++             div(style = "color: #fff;", "4. Click 'Calculate Salary' to see the predicted salary."),
++           )
++         )
++       ),
++       tabItem(
++         tabName = "salary_calculation",
++         fluidRow(
++           box(
++             width = 4,
++             status = "primary",
++             title = "Employee Information",
++             background = "teal",
++             div(style = "color: #fff; font-size: 20px; font-weight: bold;", "Age Range:"),
++             sliderTextInput("age", "", grid = TRUE, force_edges = TRUE, width = "100%",
++                             choices = seq(20, 60, by = 1)),
++             div(style = "color: #fff; font-size: 20px; font-weight: bold;", "Education:"),
++             selectInput("education", "", choices = unique(data$education)),
++             div(style = "color: #fff; font-size: 20px; font-weight: bold;", "Experience Range:"),
++             sliderTextInput("experience", "", grid = TRUE, force_edges = TRUE, width = "100%",
++                             choices = seq(1, 15, by = 1)),
++             actionButton("calculate_salary", "Calculate Salary", class = "btn btn-success btn-block")
++           ),
++           box(
++             width = 8,
++             status = "info",
++             title = "Salary Calculation",
++             background = "purple",
++             h3("Predicted Salary:", style = "color: #fff; font-size: 24px; text-align: center;"),
++             textOutput("predicted_salary"),
++             h3("F1 Score:", style = "color: #fff; font-size: 24px; text-align: center;"),
++             textOutput("f1_score"),
++             h3("R-squared (R2):", style = "color: #fff; font-size: 24px; text-align: center;"),
++             textOutput("r_squared")
++           )
++         )
++       )
++     )
++   )
++ )
+> server <- function(input, output) {
++   observeEvent(input$calculate_salary, {
++     age_range <- as.numeric(gsub(",", "", input$age))
++     experience_range <- as.numeric(gsub(",", "", input$experience))
++     
++     new_data <- data.frame(
++       age = mean(age_range),
++       education = input$education,
++       experience = mean(experience_range)
++     )
++     if (!is.na(new_data$age) && !is.na(new_data$experience)) {
++       predicted_salary <- predict(model, newdata = new_data)
++       output$predicted_salary <- renderText({
++         paste("Predicted Salary: Rs.", round(predicted_salary, 0))
++       })
++       
++       # Calculate F1 Score
++       # Assuming 'actual_salary' is the actual salary from your data
++       actual_salary <- data$salary
++       
++       TP <- sum(predicted_salary > threshold & actual_salary > threshold)
++       FP <- sum(predicted_salary > threshold & actual_salary <= threshold)
++       TN <- sum(predicted_salary <= threshold & actual_salary <= threshold)
++       FN <- sum(predicted_salary <= threshold & actual_salary > threshold)
++       
++       precision <- TP / (TP + FP)
++       recall <- TP / (TP + FN)
++       f1_score <- 2 * (precision * recall) / (precision + recall)
++       output$f1_score <- renderText({
++         paste("F1 Score:", round(f1_score, 2))
++       })
++       
++       # Calculate R-squared (R2)
++       r_squared <- summary(model)$r.squared
++       output$r_squared <- renderText({
++         paste("R-squared (R2):", round(r_squared, 4))
++       })
++     } else {
++       output$predicted_salary <- renderText({
++         "Please enter valid age and experience."
++       })
++     }
++   })
++ }
+> shinyApp(ui = ui, server = server)
