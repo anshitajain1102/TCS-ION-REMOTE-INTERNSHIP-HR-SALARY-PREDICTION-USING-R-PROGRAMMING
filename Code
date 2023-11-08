@@ -16,9 +16,19 @@ library(writexl)  # Add the writexl package
 # Load the dataset from Excel
 data <- read_excel(file.choose())
 
-# Preprocess the data
-# Check for missing values and handle them if necessary
-# Encoding categorical variables if needed
+# Preprocess the data (if needed)
+
+# Remove outliers from the 'salary' variable
+# Calculate the Z-score for the 'salary' variable
+z_scores <- scale(data$salary)
+z_scores
+
+# Define a threshold for outliers (e.g., 2 standard deviations)
+threshold <- 2
+threshold
+
+# Filter out rows with outliers
+data <- data[abs(z_scores) < threshold, ]
 
 # Split the data into training and testing sets
 set.seed(123)  # for reproducibility
@@ -34,6 +44,15 @@ write_xlsx(test_data, path = "test_data.xlsx")
 
 # Build the OLS regression model
 model <- lm(salary ~ age + education + experience, data = train_data)
+summary(model)
+
+#Assumptions Testing
+
+mean(model$residuals) 
+bptest(model) 
+durbinWatsonTest(model)
+shapiro.test(model$residuals)
+vif(model)
 
 # Install and load the Shiny package if not already installed
 install.packages("shiny")
@@ -42,12 +61,8 @@ install.packages("shinythemes")
 install.packages("shinydashboard")
 library(shiny)
 library(shinyWidgets)
+library(shinydashboard)
 
-library(shinydashboard)
-library(shinyWidgets)
-library(shiny)
-library(shinydashboard)
-library(shinyWidgets)
 
 ui <- dashboardPage(
   dashboardHeader(title = "HR Salary Prediction Dashboard"),
@@ -100,7 +115,11 @@ ui <- dashboardPage(
             title = "Salary Calculation",
             background = "purple",
             h3("Predicted Salary:", style = "color: #fff; font-size: 24px; text-align: center;"),
-            textOutput("predicted_salary")
+            textOutput("predicted_salary"),
+            h3("F1 Score:", style = "color: #fff; font-size: 24px; text-align: center;"),
+            textOutput("f1_score"),
+            h3("R-squared (R2):", style = "color: #fff; font-size: 24px; text-align: center;"),
+            textOutput("r_squared")
           )
         )
       )
@@ -121,7 +140,29 @@ server <- function(input, output) {
     if (!is.na(new_data$age) && !is.na(new_data$experience)) {
       predicted_salary <- predict(model, newdata = new_data)
       output$predicted_salary <- renderText({
-        paste("Predicted Salary: Rs.", round(predicted_salary, 2))
+        paste("Predicted Salary: Rs.", round(predicted_salary, 0))
+      })
+      
+      # Calculate F1 Score
+      # Assuming 'actual_salary' is the actual salary from your data
+      actual_salary <- data$salary
+      
+      TP <- sum(predicted_salary > threshold & actual_salary > threshold)
+      FP <- sum(predicted_salary > threshold & actual_salary <= threshold)
+      TN <- sum(predicted_salary <= threshold & actual_salary <= threshold)
+      FN <- sum(predicted_salary <= threshold & actual_salary > threshold)
+      
+      precision <- TP / (TP + FP)
+      recall <- TP / (TP + FN)
+      f1_score <- 2 * (precision * recall) / (precision + recall)
+      output$f1_score <- renderText({
+        paste("F1 Score:", round(f1_score, 2))
+      })
+      
+      # Calculate R-squared (R2)
+      r_squared <- summary(model)$r.squared
+      output$r_squared <- renderText({
+        paste("R-squared (R2):", round(r_squared, 4))
       })
     } else {
       output$predicted_salary <- renderText({
